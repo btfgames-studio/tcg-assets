@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>podoguessr</title>
+<style>
+  :root{--bg:#f0f2f5;--card:#fff;--text:#333;--muted:#888;--line:#eee;--input:#ccc;--accent:#007bff;--nav:#fff;--shadow:rgba(0,0,0,.1)}
+  [data-theme=dark]{--bg:#14161a;--card:#1f2329;--text:#e6e8eb;--muted:#9aa0a6;--line:#333a42;--input:#444b55;--accent:#4da3ff;--nav:#1b1f24;--shadow:rgba(0,0,0,.5)}
+  body{font-family:Arial,sans-serif;margin:0;background:var(--bg);color:var(--text);overflow-x:hidden;transition:background .3s}
+  #nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--nav);box-shadow:0 2px 6px var(--shadow)}
+  .brand{font-weight:bold;font-size:20px;color:var(--accent);cursor:pointer;margin-right:auto;text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+  .nb{padding:6px 10px;font-size:13px;border:2px solid var(--accent);background:var(--card);color:var(--accent);border-radius:6px;cursor:pointer}
+  .nb:hover{background:var(--accent);color:#fff}
+  .menu{position:relative}
+  .dd{position:absolute;right:0;top:115%;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:0 4px 12px var(--shadow);z-index:60;overflow:hidden}
+  .dd button{display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:var(--text);font-size:14px;cursor:pointer}
+  .dd button:hover{background:var(--line)}
+  .av{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px}
+  .av.ph{display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;font-size:12px;font-weight:bold}
+  #app{display:flex;justify-content:center}
+  .card{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 4px 10px var(--shadow);text-align:center;max-width:420px;width:100%;margin:14px 10px;box-sizing:border-box}
+  h1{color:var(--accent);font-size:28px;margin:0 0 10px;text-transform:uppercase;letter-spacing:1px}
+  h2{color:var(--text);font-size:18px;margin:0 0 12px}
+  .hidden{display:none!important}
+  select,input[type=text],input[type=password]{width:100%;box-sizing:border-box;padding:11px;font-size:15px;border:2px solid var(--input);border-radius:6px;margin-bottom:10px;background:var(--card);color:var(--text)}
+  input[type=file]{margin-bottom:10px;max-width:100%}
+  .btn{padding:12px;font-size:16px;border:2px solid var(--accent);background:var(--card);color:var(--accent);border-radius:6px;cursor:pointer;transition:all .2s;width:100%}
+  .btn:hover:not(:disabled){background:var(--accent);color:#fff}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.correct{background:#28a745;color:#fff;border-color:#28a745;opacity:1}
+  .btn.wrong{background:#dc3545;color:#fff;border-color:#dc3545;opacity:1}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.big{padding:22px;font-size:22px}
+  .btn.back{margin-top:12px;font-size:14px;padding:9px}
+  .row{display:flex;flex-direction:column;gap:10px}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .hud{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--muted);margin-bottom:8px}
+  .timer{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .bar{flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+  #tbar{height:100%;width:100%;background:var(--accent)}
+  #tbar.low{background:#dc3545}
+  #tsec{width:32px;font-weight:bold;font-size:14px;text-align:right}
+  .wrap{position:relative;width:fit-content;max-width:100%;min-width:220px;min-height:200px;margin:0 auto 15px;border-radius:8px;overflow:hidden;background:#222}
+  .wrap img{display:block;max-width:100%;max-height:min(58vh,480px);width:auto;height:auto;margin:0 auto}
+  #curtain{position:absolute;left:0;right:0;top:0;height:100%;background:repeating-linear-gradient(45deg,#1b1f24 0 10px,#252b33 10px 20px);border-bottom:3px solid var(--accent);transition:height 1s ease-in-out;display:flex;align-items:center;justify-content:center;color:#59636f;font-size:44px;overflow:hidden}
+  #curtain::after{content:"?"}
+  #msg{margin:12px 0 4px;font-weight:bold;font-size:17px;min-height:22px}
+  table{width:100%;border-collapse:collapse;margin:8px 0;font-size:15px}
+  td{padding:6px;border-bottom:1px solid var(--line);text-align:left}
+  td:last-child{text-align:right}
+  .muted{color:var(--muted)}
+  .toe{transition:transform .6s ease;transform-box:fill-box;transform-origin:50% 100%}
+  .toe .t{fill:#f1c5a0;stroke:#c98f66;stroke-width:1.6;transition:fill .6s}
+  .toe .n{fill:#fbe6d6;transition:opacity .4s}
+  .toe.down{transform:scaleY(.38)}
+  .toe.down .t{fill:#d3977a}
+  .toe.down .n{opacity:0}
+  /* Cartes */
+  .tcg{border:3px solid #c9a227;border-radius:10px;background:linear-gradient(160deg,#fff6c8,#e8c75a);padding:4px;box-sizing:border-box;font-size:11px;position:relative;color:#3b2f00}
+  .tcg[data-id]{cursor:pointer}
+  .tcg .nm{font-weight:bold;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tcg img{width:100%;height:100px;object-fit:cover;border-radius:5px;display:block}
+  .tcg .no{color:#7a5f00;padding-top:2px}
+  .tcg .x{position:absolute;z-index:4;top:6px;right:6px;background:#007bff;color:#fff;border-radius:10px;padding:1px 6px;font-weight:bold}
+  .tcg::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;display:none}
+  .tcg.rare{border-color:#7fb0e8;background:linear-gradient(160deg,#eef6ff,#a9c8f0 60%,#e4f0ff);box-shadow:0 0 8px #6aa9ff88}
+  .tcg.rare::before{display:block;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.85) 50%,transparent 70%);background-size:260% 100%;animation:shine 3s ease-in-out infinite}
+  @keyframes shine{0%{background-position:160% 0}60%,100%{background-position:-60% 0}}
+  .tcg.leg{border-color:#b8860b;background:linear-gradient(135deg,#ffd700,#ff8ad8,#8a6bff,#3fd9ff,#ffd700);background-size:300% 300%;animation:holo 4s linear infinite;box-shadow:0 0 12px #ffd700aa,0 0 22px #ff8ad855}
+  .tcg.leg::before{display:block;background:repeating-linear-gradient(115deg,rgba(255,0,80,.38),rgba(255,200,0,.38) 12%,rgba(0,255,140,.38) 24%,rgba(0,170,255,.38) 36%,rgba(170,0,255,.38) 48%,rgba(255,0,80,.38) 60%);background-size:300% 300%;mix-blend-mode:color-dodge;opacity:.75;animation:holo 3s linear infinite}
+  @keyframes holo{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+  .tcg.locked{background:#ccc;border-color:#aaa;color:#777;animation:none;box-shadow:none}
+  [data-theme=dark] .tcg.locked{background:#3a3f46;border-color:#555;color:#8a9099}
+  .tcg.locked .q{height:100px;display:flex;align-items:center;justify-content:center;font-size:36px}
+  .tilt{transition:transform .12s ease-out;will-change:transform}
+  .tilt::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .2s;background:radial-gradient(circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.4),transparent 55%)}
+  .tilt:hover::after{opacity:1}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+  .won{width:130px;margin:6px auto}
+  .won .tcg img{height:120px}
+  /* Fenêtre carte agrandie */
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:200;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box}
+  .mbox{width:300px;max-width:100%;display:flex;flex-direction:column;gap:10px;text-align:center}
+  #modal-card .tcg{font-size:15px}
+  #modal-card .tcg img{height:280px}
+  #modal-info{color:#ddd;font-size:13px;min-height:16px}
+  /* Vitrine */
+  .vit{display:flex;flex-wrap:wrap;justify-content:center;gap:18px 12px;padding:16px 10px;border-radius:10px;background:linear-gradient(#262b33,#14161a)}
+  .stand{width:46%}
+  .stand .tcg{font-size:13px}
+  .stand .tcg img{height:170px}
+  .stand .base{height:14px;margin-top:8px;border-radius:4px;background:linear-gradient(#a06a35,#5a3a1a);box-shadow:0 8px 12px rgba(0,0,0,.6)}
+  .slot{height:232px;border:2px dashed #555;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#888;font-size:13px}
+  .chest{display:flex;align-items:center;gap:10px;text-align:left;border:2px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px}
+  .chest .ico{font-size:34px}
+  .chest>div:nth-child(2){flex:1;font-size:14px}
+  .chest .btn{width:auto;padding:8px 12px;font-size:14px;white-space:nowrap}
+  textarea{width:100%;box-sizing:border-box;font-family:monospace;font-size:12px;background:var(--card);color:var(--text);border:2px solid var(--input);border-radius:6px;margin:10px 0;padding:8px}
+  .sug{display:flex;align-items:center;gap:8px;text-align:left;border-bottom:1px solid var(--line);padding:6px 0;font-size:14px}
+  .sug img{width:40px;height:40px;object-fit:cover;border-radius:6px}
+  .sug span{flex:1}
+  .sug button{border:none;background:none;cursor:pointer;font-size:18px}
+  .diplome{border:6px double #c9a227;background:#fffbea;color:#333;padding:20px;border-radius:8px;margin:15px 0}
+  .diplome img{max-width:100%}
+  .fx{position:fixed;top:-50px;user-select:none;pointer-events:none;z-index:1000;animation:fall linear}
+  @keyframes fall{to{transform:translateY(105vh) rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header id="nav">
+  <div class="brand" onclick="goHome()">🦶 <span id="title"></span></div>
+  <div class="menu hidden" id="navr">
+    <button class="nb" id="profbtn" onclick="toggleMenu(event)"></button>
+    <div id="dd" class="dd hidden">
+      <button onclick="goHome()">🏠 Accueil</button>
+      <button onclick="openBinder()">📒 Classeur</button>
+      <button onclick="openVitrine()">🖼️ Ma vitrine</button>
+      <button onclick="document.getElementById('avfile').click()">📷 Photo de profil</button>
+      <button id="ddtheme" onclick="toggleTheme()"></button>
+      <button onclick="logout()">🚪 Se déconnecter</button>
+    </div>
+  </div>
+  <input type="file" id="avfile" accept="image/*" class="hidden">
+</header>
+
+<div id="app">
+  <div class="card" id="boot"><p class="muted">Chargement des cartes…</p></div>
+  <div class="card hidden" id="login">
+    <h1>Connexion</h1>
+    <p class="muted" id="l-hint">Entre ton nom de kiffeur et ton mot de passe. Nouveau ? Un compte sera créé.</p>
+    <input type="text" id="l-name" maxlength="20" placeholder="Nom de kiffeur" autocomplete="username">
+    <input type="password" id="l-pw" placeholder="Mot de passe" autocomplete="current-password">
+    <input type="password" id="l-pw2" class="hidden" placeholder="Confirme le mot de passe" autocomplete="new-password">
+    <div class="row"><button class="btn primary" onclick="login()">Continuer</button></div>
+    <div id="l-msg" style="margin-top:10px;font-weight:bold;color:#dc3545"></div>
+  </div>
+
+  <!-- LOBBY -->
+  <div class="card hidden" id="home">
+    <h1 id="lobby-title">Lobby</h1>
+    <div id="src-note" style="color:#e69500;font-size:13px;margin-bottom:8px"></div>
+    <button class="btn primary big" id="resume" onclick="resumeGame()">▶ Reprendre ma partie</button>
+    <div id="resume-info" class="muted" style="margin:6px 0 10px;font-size:13px"></div>
+    <button class="btn" onclick="startGame()">🎮 Nouvelle partie</button>
+    <div class="mgrid">
+      <button class="btn" onclick="openBinder()">📒 Classeur</button>
+      <button class="btn" onclick="openRank()">🏆 Classement</button>
+      <button class="btn" onclick="openShop()">🛒 Boutique</button>
+      <button class="btn" onclick="openTrade()">🔄 Échanges</button>
+      <button class="btn" onclick="openVitrine()">🖼️ Ma vitrine</button>
+      <button class="btn" onclick="openSuggest()">💡 Suggérer un ajout</button>
+    </div>
+    <p class="muted" style="font-size:13px;line-height:1.5;margin-bottom:0">Devine la célébrité en <b>10 s</b>.<br>1er essai juste : la <b>carte</b> · 2e essai juste : des <b>points</b> (secondes restantes)<br>Doublon : 5 pts (10 pts si légendaire)</p>
+  </div>
+
+  <div class="card hidden" id="game">
+    <div class="hud"><span id="hud-round"></span><span id="hud-life"></span><span id="hud-score"></span></div>
+    <div class="timer"><div class="bar"><div id="tbar"></div></div><span id="tsec"></span></div>
+    <div class="wrap"><img id="img" alt="Photo à deviner"><div id="curtain"></div></div>
+    <div class="row" id="options"></div>
+    <div id="msg"></div>
+    <div id="won"></div>
+    <button class="btn primary hidden" id="next" onclick="nextRound()" style="margin-top:10px">Suivante</button>
+    <button class="btn back" onclick="quitToMenu()">💾 Conserver ma progression et retour au menu</button>
+  </div>
+
+  <div class="card hidden" id="end">
+    <h1>Fin de partie</h1>
+    <h2 id="end-text"></h2>
+    <div id="diplome-zone"></div>
+    <h2>🏆 Classement</h2>
+    <div id="rank-end"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary" onclick="startGame()">Rejouer</button>
+      <button class="btn" onclick="openShop()">🛒 Boutique</button>
+      <button class="btn" onclick="goHome()">🏠 Accueil</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="rank">
+    <h1>Classement</h1>
+    <p class="muted" style="margin-top:0">Classé par nombre de cartes différentes (★ = légendaires)</p>
+    <div id="rank-full"></div>
+    <button class="btn back" onclick="goHome()">← Retour à l'accueil</button>
+  </div>
+
+  <div class="card hidden" id="binder">
+    <h2>📒 Classeur</h2>
+    <select id="who" onchange="renderBinder()"></select>
+    <div id="progress" style="font-weight:bold"></div>
+    <div id="binder-act" style="margin:10px 0"></div>
+    <p class="muted" style="font-size:12px;margin:0">Touche une carte pour l'agrandir</p>
+    <div class="grid" id="grid"></div>
+    <div id="binder-diplome"></div>
+    <button class="btn back" onclick="goHome()">← Retour à l'accueil</button>
+  </div>
+
+  <div class="card hidden" id="vitrine">
+    <h1>Vitrine</h1>
+    <select id="vwho" onchange="renderVitrine()"></select>
+    <div class="vit" id="vit-grid"></div>
+    <p class="muted" id="vit-hint" style="font-size:13px"></p>
+    <button class="btn back" onclick="goHome()">← Retour à l'accueil</button>
+  </div>
+
+  <div class="card hidden" id="shop">
+    <h1>Boutique</h1>
+    <h2 id="shop-bal"></h2>
+    <div id="chests"></div>
+    <div id="shop-res"></div>
+    <button class="btn back" onclick="goHome()">← Retour à l'accueil</button>
+  </div>
+
+  <div class="card hidden" id="trade">
+    <h1>Échanges</h1>
+    <h2 id="trade-me"></h2>
+    <div id="trade-body"></div>
+    <button class="btn back" onclick="goHome()">← Retour à l'accueil</button>
+  </div>
+
+  <div class="card hidden" id="suggest">
+    <h1>Suggérer un ajout</h1>
+    <p class="muted" style="margin-top:0">Choisis une photo et indique le nom de la personne.</p>
+    <input type="file" id="s-file" accept="image/*">
+    <img id="s-prev" class="hidden" alt="" style="max-width:100%;border-radius:8px;margin-bottom:10px">
+    <input type="text" id="s-name" maxlength="40" placeholder="Nom de la personne (ex. Gal Gadot)">
+    <button class="btn primary" onclick="sendSuggestion()">Envoyer la suggestion</button>
+    <div id="s-msg" style="margin:10px 0;font-weight:bold"></div>
+    <div id="s-list"></div>
+    <button class="btn back" onclick="goHome()">← Retour à l'accueil</button>
+  </div>
+
+  <div class="card hidden" id="admin">
+    <h1>Import des photos</h1>
+    <p class="muted" style="margin-top:0;font-size:13px">Sélectionne le dossier des photos nommées « Nom - Rareté.jpg » (Common, Rare ou Legendary). L'outil prépare la liste à coller dans <b>CARDS_RAW</b>.</p>
+    <input type="file" id="a-files" multiple webkitdirectory>
+    <label style="font-size:13px"><input type="checkbox" id="a-imgur" onchange="renderAdmin()"> Format Imgur (j'ajouterai les codes ensuite)</label>
+    <div id="a-sum" style="font-weight:bold;margin-top:10px"></div>
+    <div id="a-warn" style="font-size:13px;color:#e69500;text-align:left"></div>
+    <textarea id="a-out" rows="8" readonly></textarea>
+    <button class="btn" onclick="copyList()">📋 Copier la liste</button>
+    <button class="btn back" onclick="goHome()">← Retour</button>
+  </div>
+</div>
+
+<!-- Carte agrandie -->
+<div id="modal" class="hidden" onclick="if(event.target===this)closeCard()">
+  <div class="mbox">
+    <div id="modal-card"></div>
+    <div id="modal-info"></div>
+    <div id="modal-act"></div>
+    <button class="btn" onclick="closeCard()">Fermer</button>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURATION
+   ===================================================================== */
+const TITRE = "podoguessr";
+
+/* AJOUTER UNE CARTE = ajouter UNE ligne dans CARDS_RAW. Tout est lu dans le NOM DU FICHIER :
+       "Nom de la personne - Rareté.jpg"     (Rareté : Common, Rare ou Legendary ; sans rareté = Common)
+   - Photo dans le dossier "photos/" (voir PHOTOS_DIR) :   "Gale Gadot - Rare.jpg",
+   - Photo sur Imgur : le nom du fichier garde les infos, le code Imgur vient en 2e :   ["Gale Gadot - Rare.jpg", "AbC123.jpg"],
+   Les 2 mauvaises réponses sont tirées parmi les noms des autres cartes.
+   Astuce : ouvre podoquizz.html#admin pour générer toute la liste depuis ton dossier de photos.
+   Tant que la liste est vide, le jeu tourne avec 24 cartes de démonstration. */
+const CARDS_RAW = [
+];
+
+/* Raretés */
+const RARITIES = ["common", "rare", "legendary"];
+const CHANCES = {common: 60, rare: 30, legendary: 10};      // % de chance de tomber sur chaque rareté
+const DOUBLON_PTS = {common: 5, rare: 5, legendary: 10};    // points d'un doublon (1er essai)
+const RLAB = {common: "Commune", rare: "Rare", legendary: "Légendaire"};
+const RLABP = {common: "communes", rare: "rares", legendary: "légendaires"};
+const RALIAS = {common: "common", commune: "common", commun: "common", rare: "rare", legendary: "legendary", legendaire: "legendary", leg: "legendary"};
+const PHOTOS_DIR = "photos/";
+const IMG_RE = /\.(jpe?g|png|webp|gif|avif)$/i;
+
+/* PHOTOS HÉBERGÉES SUR GITHUB : remplis owner + repo (dépôt PUBLIC). Le jeu lit alors la liste des fichiers
+   du dépôt à chaque ouverture (mise en cache 10 min) : ajouter une photo "Nom Prénom - Rare.jpg" dans le dépôt
+   suffit pour créer la carte, sans toucher à ce fichier.
+     owner  : ton pseudo GitHub (ou l'organisation)      repo : nom du dépôt
+     branch : "main" en général                          path : dossier des photos ("" = racine du dépôt)
+     cdn    : true = images servies par jsDelivr (plus rapide, mais une nouvelle photo peut mettre un moment à apparaître) */
+const GITHUB = {owner: "btfgames-studio", repo: "tcg-assets", branch: "main", path: "", cdn: false, cacheMin: 10};
+
+/* FILET DE SÉCURITÉ : copie de la liste des photos du dépôt, utilisée seulement si GitHub ne répond pas
+   (il peut alors manquer les photos ajoutées depuis). Pour la mettre à jour : podoquizz.html#admin */
+const SNAPSHOT = [
+  "Adèle Axarchopoulos - Common.jpg",
+  "Adèle Hanael - Common.jpg",
+  "Ana De Armas - Legendary.jpg",
+  "Angelina Jolie - Common.jpg",
+  "Anne Hathaway - Rare.jpg",
+  "Anne Roumanoff - Legendary.jpg",
+  "Anya Taylor Joy - Common.jpg",
+  "Brie Larson - Common.jpg",
+  "Bryce Dallas Howard - Rare.jpg",
+  "Cameron Diaz - Common.jpg",
+  "Cate Blanchett - Common.jpg",
+  "Charlize Theron - Common.webp",
+  "Elizabeth Olsen - Rare.jpg",
+  "Emma Stone - Common.jpg",
+  "Eva Green - Common.jpg",
+  "Florence Foresti - Common.jpg",
+  "Florence Pugh - Common.jpg",
+  "Gal Gadot - Common.jpg",
+  "Helena Bonham Carter - Rare.jpg",
+  "Jennifer Aniston - Rare.jpg",
+  "Jennifer Connelly - Rare.jpg",
+  "Jennifer Lawrence - Legendary.jpg",
+  "Jessica Alba - Common.jpg",
+  "Jessica Chastain - Rare.jpg",
+  "Kirsten Dunst - Common.jpg",
+  "Liv Tyler - Rare.jpg",
+  "Margot Robbie - Common.webp",
+  "Marine Le Pen - Legendary.webp",
+  "Marion Cotillard - Common.jpg",
+  "Marisa Tomei - Common.jpg",
+  "Milla Jovovich - Common.jpg",
+  "Natalie Portman - Legendary.jpg",
+  "Nicole Kidman - Common.webp",
+  "Salma Hayek - Legendary.jpg",
+  "Uma Thurman - Rare.jpg",
+  "Winona Ryder - Common.jpg",
+  "Zoe Saldaña - Legendary.webp"
+];
+
+const DIPLOME_IMG = "";        // image du diplôme (lien Imgur) ; "" = diplôme texte
+const IMGUR = "https://i.imgur.com/";
+const TEMPS = 10;              // secondes par carte
+const REVEALS = [0.30, 0.65];  // part de la photo visible en partant du BAS : 1er essai, 2e essai (puis 100 % à la révélation)
+const MAX_LIFE = 5;            // orteils ; -1 par photo ratée ou temps écoulé
+const POIDS_NOUVELLE = 2.3;    // à rareté égale, une carte pas encore possédée tombe ~2x plus souvent
+const COUTS = {normal: 20, legendaire: 40, chanceux: 50};
+const CHANCEUX_DOUBLE = 0.1;   // coffre chanceux : chance d'obtenir 2 cartes
+const TRADE_COST = 3;          // points payés par celui qui lance l'échange
+const VITRINE_MAX = 5;
+const NB_CLASSEMENT = 10;
+const K_BINDERS = "podoquizz_binders", K_USERS = "podoquizz_users", K_SESSION = "podoquizz_session", K_THEME = "podoquizz_theme", K_SAVES = "podoquizz_saves", K_SUGG = "podoquizz_suggestions";
+
+/* =====================================================================
+   DONNÉES
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pts = n => n + " pt" + (n > 1 ? "s" : "");
+function wpick(list, wf) {
+  const ws = list.map(wf); let r = Math.random() * ws.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < list.length; i++) { r -= ws[i]; if (r <= 0) return list[i]; }
+  return list[list.length - 1];
+}
+function demoImg(i) {
+  const h = (i * 47) % 360;
+  return "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="350"><rect width="100%" height="100%" fill="hsl(' + h + ',60%,70%)"/><circle cx="130" cy="120" r="60" fill="hsl(' + h + ',60%,40%)"/><rect x="250" y="200" width="100" height="100" fill="hsl(' + h + ',60%,85%)"/><text x="50%" y="92%" text-anchor="middle" font-size="28" font-family="Arial" fill="#fff">Démo ' + (i + 1) + '</text></svg>');
+}
+const norm = t => t.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+/* "Gale Gadot - Rare.jpg" -> {name:"Gale Gadot", r:"rare"} */
+function parseFile(fn) {
+  const base = fn.replace(/^.*[\\/]/, "").replace(/\.[a-z0-9]+$/i, "").trim();
+  const m = base.match(/^(.*\S)\s*[-–—_]\s*([A-Za-zÀ-ÿ]+)$/);
+  if (m && RALIAS[norm(m[2])]) return {name: m[1].trim(), r: RALIAS[norm(m[2])], tagged: true};
+  return {name: base, r: "common", tagged: false};
+}
+let DEMO = false, srcNote = "";
+const CARDS = [], LEGS = [];
+function fillLegs() { LEGS.length = 0; CARDS.filter(c => c.r === "legendary").forEach(c => LEGS.push(c)); }
+/* entries : "Nom - Rareté.jpg" ou ["Nom - Rareté.jpg", source image, focus] */
+function buildCards(entries) {
+  CARDS.length = 0; const seen = new Set();
+  entries.forEach(e => {
+    const [fn, src, focus] = Array.isArray(e) ? e : [e], p = parseFile(fn);
+    if (seen.has(p.name)) { console.warn("Nom en double ignoré :", p.name); return; }
+    seen.add(p.name);
+    const img = src ? (/^http/.test(src) ? src : IMGUR + src) : PHOTOS_DIR + encodeURIComponent(fn);
+    CARDS.push({id: p.name, name: p.name, img, n: CARDS.length + 1, r: p.r, leg: p.r === "legendary"});
+  });
+  fillLegs();
+}
+function buildDemo() {
+  CARDS.length = 0;
+  for (let i = 0; i < 24; i++) {
+    const n = i + 1, r = n % 8 === 0 ? "legendary" : n % 4 === 0 ? "rare" : "common";
+    CARDS.push({id: "Démo " + n, name: "Personnalité démo " + n, img: demoImg(i), n, r, leg: r === "legendary"});
+  }
+  fillLegs();
+}
+const ghPath = () => GITHUB.path.replace(/^\/+|\/+$/g, "");
+function fileUrl(name) {
+  const pre = ghPath() ? ghPath().split("/").map(encodeURIComponent).join("/") + "/" : "";
+  return GITHUB.cdn
+    ? "https://cdn.jsdelivr.net/gh/" + GITHUB.owner + "/" + GITHUB.repo + "@" + GITHUB.branch + "/" + pre + encodeURIComponent(name)
+    : "https://raw.githubusercontent.com/" + GITHUB.owner + "/" + GITHUB.repo + "/" + GITHUB.branch + "/" + pre + encodeURIComponent(name);
+}
+/* Liste des noms de fichiers : 1) API GitHub 2) à défaut, liste jsDelivr (autre serveur, sans limite stricte) */
+async function listRepoFiles() {
+  let err;
+  try {
+    const path = ghPath();
+    const url = "https://api.github.com/repos/" + GITHUB.owner + "/" + GITHUB.repo + "/contents" + (path ? "/" + path.split("/").map(encodeURIComponent).join("/") : "") + "?ref=" + encodeURIComponent(GITHUB.branch);
+    const r = await fetch(url, {headers: {Accept: "application/vnd.github+json"}});
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return (await r.json()).filter(f => f.type === "file").map(f => f.name);
+  } catch (e) { err = e; }
+  try {
+    const r = await fetch("https://data.jsdelivr.com/v1/packages/gh/" + GITHUB.owner + "/" + GITHUB.repo + "@" + GITHUB.branch + "?structure=flat");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const base = "/" + (ghPath() ? ghPath() + "/" : "");
+    return (await r.json()).files.map(f => f.name).filter(n => n.startsWith(base) && !n.slice(base.length).includes("/")).map(n => n.slice(base.length));
+  } catch (e) { throw err; }
+}
+async function loadCards() {
+  let why = "";
+  if (GITHUB.owner && GITHUB.repo) {
+    const key = "podoquizz_gh_" + [GITHUB.owner, GITHUB.repo, GITHUB.branch, GITHUB.path].join("/");
+    const cache = load(key, null);
+    if (cache && Date.now() - cache.t < GITHUB.cacheMin * 60000) { buildCards(cache.list); if (CARDS.length) return "github"; }
+    try {
+      const list = (await listRepoFiles()).filter(n => IMG_RE.test(n)).sort((a, b) => a.localeCompare(b)).map(n => [n, fileUrl(n)]);
+      buildCards(list);
+      if (CARDS.length) { save(key, {t: Date.now(), list}); return "github"; }
+    } catch (e) {
+      console.warn("GitHub injoignable :", e); why = (e && e.message) || String(e);
+      if (cache) { buildCards(cache.list); if (CARDS.length) { srcNote = "⚠ GitHub injoignable : liste gardée en mémoire."; return "cache"; } }
+    }
+    const hint = /fetch/i.test(why) ? " Ouvre le fichier directement dans ton navigateur (pas dans l'aperçu de Claude) ou héberge-le sur GitHub Pages." : "";
+    if (SNAPSHOT.length) { buildCards(SNAPSHOT.map(n => [n, fileUrl(n)])); srcNote = "⚠ GitHub injoignable (" + why + ") : liste intégrée utilisée." + hint; return "snapshot"; }
+    srcNote = "⚠ GitHub injoignable (" + why + ") : cartes de démonstration." + hint;
+  }
+  if (CARDS_RAW.length) { buildCards(CARDS_RAW); if (CARDS.length) return "liste"; }
+  DEMO = true; buildDemo(); return "demo";
+}
+const sym = c => c.r === "legendary" ? "★ " : c.r === "rare" ? "◆ " : "";
+const cardById = id => CARDS.find(c => c.id === id);
+const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="350"><rect width="100%" height="100%" fill="#ccc"/><text x="50%" y="50%" text-anchor="middle" fill="#666" font-size="20" font-family="Arial">Image introuvable</text></svg>');
+
+/* Stockage navigateur : binders[nom] = {cards:{id:nombre}, pts, vit:[ids], done} ; users[nom] = {pw, avatar} */
+function load(k, def) { try { return JSON.parse(localStorage.getItem(k)) || def; } catch (e) { return def; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+const binders = () => load(K_BINDERS, {});
+const users = () => load(K_USERS, {});
+function bget(n) { const b = binders()[n] || {}; return {cards: b.cards || {}, pts: b.pts || 0, vit: b.vit || []}; }
+function bset(n, b) { const all = binders(); b.done = CARDS.every(c => b.cards[c.id]); all[n] = b; save(K_BINDERS, all); if (n === me) renderNav(); }
+function addCard(n, id) { const b = bget(n); b.cards[id] = (b.cards[id] || 0) + 1; bset(n, b); return b.cards[id]; }
+function addPts(n, p) { const b = bget(n); b.pts += p; bset(n, b); }
+
+/* ---------- Authentification (simple, pas ultra sécurisée) ---------- */
+let me = null, creating = false;
+function hash(pw, salt) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57; const s = salt + "|" + pw;
+  for (let i = 0; i < s.length; i++) { const ch = s.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+const findUser = n => Object.keys(users()).find(k => k.toLowerCase() === n.toLowerCase());
+
+function login() {
+  const n = $("l-name").value.trim(), pw = $("l-pw").value, msg = $("l-msg");
+  msg.textContent = "";
+  if (!n || !pw || n === "__proto__") { msg.textContent = "Entre un nom et un mot de passe."; return; }
+  const k = findUser(n), u = users();
+  if (k) {
+    if (u[k].pw !== hash(pw, k)) { msg.textContent = "Mot de passe incorrect."; return; }
+    enter(k);
+  } else if (!creating) {
+    creating = true; $("l-pw2").classList.remove("hidden");
+    $("l-hint").textContent = "Nouveau joueur ! Ton mot de passe sert à créer le compte : confirme-le pour valider.";
+  } else {
+    if ($("l-pw2").value !== pw) { msg.textContent = "Les deux mots de passe ne correspondent pas."; return; }
+    u[n] = {pw: hash(pw, n), avatar: null}; save(K_USERS, u); enter(n);
+  }
+}
+function enter(name) { me = name; save(K_SESSION, name); resetLogin(); renderNav(); goHome(); }
+function logout() { saveGame(); active = false; me = null; try { localStorage.removeItem(K_SESSION); } catch (e) {} renderNav(); show("login"); }
+function resetLogin() {
+  creating = false; $("l-name").value = $("l-pw").value = $("l-pw2").value = ""; $("l-pw2").classList.add("hidden");
+  $("l-hint").textContent = "Entre ton nom de kiffeur et ton mot de passe. Nouveau ? Un compte sera créé.";
+}
+$("l-name").addEventListener("input", () => { creating = false; $("l-pw2").classList.add("hidden"); });
+["l-name", "l-pw", "l-pw2"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") login(); }));
+
+function avatarHTML(n) {
+  const u = users()[n];
+  return u && u.avatar ? '<img class="av" src="' + u.avatar + '" alt="">' : '<span class="av ph">' + esc((n || "?")[0].toUpperCase()) + '</span>';
+}
+function renderNav() {
+  $("navr").classList.toggle("hidden", !me);
+  if (me) $("profbtn").innerHTML = avatarHTML(me) + esc(me) + " · 💰 " + bget(me).pts + " ▾";
+}
+function toggleMenu(e) { e.stopPropagation(); $("dd").classList.toggle("hidden"); }
+document.addEventListener("click", () => $("dd").classList.add("hidden"));
+
+$("avfile").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f || !me) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const s = Math.min(im.width, im.height), c = document.createElement("canvas");
+      c.width = c.height = 96;
+      c.getContext("2d").drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, 96, 96);
+      const u = users(); u[me].avatar = c.toDataURL("image/jpeg", 0.8); save(K_USERS, u);
+      renderNav(); e.target.value = "";
+    };
+    im.src = r.result;
+  };
+  r.readAsDataURL(f);
+});
+
+/* ---------- Thème & navigation ---------- */
+let view = "login";
+function applyTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  $("ddtheme").textContent = t === "dark" ? "☀️ Thème clair" : "🌙 Thème sombre";
+}
+function toggleTheme() { const t = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(t); save(K_THEME, t); }
+$("title").textContent = TITRE;
+applyTheme(load(K_THEME, null) || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+const VIEWS = ["boot", "login", "home", "game", "end", "rank", "binder", "vitrine", "shop", "trade", "suggest", "admin"];
+function show(id) {
+  if (view === "game" && id !== "game" && active) saveGame();   // quitter la partie = progression conservée
+  view = id; if (id !== "game") stopTimer();
+  closeCard();
+  VIEWS.forEach(s => $(s).classList.toggle("hidden", s !== id));
+  if (id === "home") renderLobby();
+}
+function goHome() { show(me ? "home" : "login"); }
+
+function renderLobby() {
+  $("lobby-title").textContent = "Salut " + me + " 👋";
+  $("src-note").textContent = srcNote;
+  const s = load(K_SAVES, {})[me];
+  $("resume").disabled = !s;
+  $("resume-info").textContent = s ? "Manche " + s.round + " · " + (MAX_LIFE - s.fails) + " vie(s) restante(s) · +" + pts(s.gain) + " gagnés" : "Aucune partie en cours.";
+}
+
+/* =====================================================================
+   JEU
+   ===================================================================== */
+let player, deck, cur, curOrigin, phase, fails, gain, round, newCount, tId, deadline, revealed = false, active = false;
+
+const isOver = () => fails >= MAX_LIFE || deck.length === 0 || bget(player).done;
+function clearSave() { const s = load(K_SAVES, {}); delete s[player || me]; save(K_SAVES, s); }
+function saveGame() {
+  if (!active || !player) return false;
+  if (revealed && isOver()) { clearSave(); return false; }
+  const s = load(K_SAVES, {});
+  s[player] = {deck: deck.map(c => c.id), cur: revealed ? null : cur.id, phase, origin: curOrigin, fails, gain, round, newCount};
+  save(K_SAVES, s); return true;
+}
+function quitToMenu() { if (revealed && isOver()) return endGame(); saveGame(); active = false; goHome(); }
+
+function startGame() {
+  if ((load(K_SAVES, {})[me]) && !confirm("Une partie sauvegardée existe. La remplacer par une nouvelle partie ?")) return;
+  player = me; clearSave();
+  deck = shuffle(CARDS); fails = 0; gain = 0; round = 0; newCount = 0; active = true;
+  show("game"); nextCard();
+}
+function resumeGame() {
+  const s = load(K_SAVES, {})[me]; if (!s) return;
+  player = me; deck = s.deck.map(cardById).filter(Boolean);
+  fails = s.fails; gain = s.gain; round = s.round; newCount = s.newCount; active = true;
+  show("game");
+  const c = s.cur && cardById(s.cur);
+  if (c) loadCard(c, s.phase, s.origin);
+  else if (deck.length) nextCard();
+  else endGame();
+}
+
+/* 1) on tire la rareté (60/30/10 %, renormalisé si une rareté n'a plus de carte) 2) puis une carte de cette rareté */
+function rollRarity(list) { return wpick(RARITIES.filter(r => list.some(c => c.r === r)), r => CHANCES[r]); }
+function drawCard(list, owned) {
+  const r = rollRarity(list);
+  return wpick(list.filter(c => c.r === r), c => (owned && !owned[c.id]) ? POIDS_NOUVELLE : 1);
+}
+function pickCard() { const c = drawCard(deck, bget(player).cards); deck.splice(deck.indexOf(c), 1); return c; }
+function nextCard() { round++; loadCard(pickCard(), 0, null); }
+
+function loadCard(c, ph, origin) {
+  cur = c; phase = ph; revealed = false;
+  stopTimer();
+  const img = $("img"), rid = $("curtain");
+  img.style.visibility = "hidden";               // on cache l'ancienne photo pendant le chargement
+  rid.style.transition = "none"; curtain(0);      // rideau entièrement baissé
+  /* le minuteur ne démarre qu'une fois l'image affichée */
+  img.onload = () => {
+    img.onload = null; if (view !== "game" || cur !== c) return;
+    rid.style.transition = "none"; curtain(REVEALS[ph ? 1 : 0]); img.style.visibility = "visible";
+    void rid.offsetWidth; rid.style.transition = "";
+    document.querySelectorAll("#options .btn").forEach(b => { if (!b.classList.contains("wrong")) b.disabled = false; });
+    startTimer();
+  };
+  img.onerror = () => { img.onerror = null; img.src = PLACEHOLDER; };
+  img.src = c.img;
+  /* 2 mauvaises réponses = 2 autres noms tirés au hasard, jamais le même nom deux fois */
+  const names = [...new Set(CARDS.map(x => x.name))].filter(n => n !== c.name);
+  const box = $("options"); box.innerHTML = "";
+  shuffle([c.name, ...shuffle(names).slice(0, 2)]).forEach(n => {
+    const b = document.createElement("button");
+    b.className = "btn"; b.textContent = n; b.onclick = () => answer(b, n); b.disabled = true;
+    box.appendChild(b);
+  });
+  $("msg").textContent = ph ? "2e essai : plus de carte, mais des points !" : ""; $("msg").style.color = "#e69500";
+  $("won").innerHTML = ""; $("next").classList.add("hidden");
+  hud();
+  $("tbar").style.width = "100%"; $("tbar").classList.remove("low"); $("tsec").textContent = TEMPS + "s";
+}
+/* v = part de la photo visible, en partant du bas (0 = tout caché, 1 = tout visible) */
+const curtain = v => { $("curtain").style.height = (Math.round((1 - v) * 1000) / 10) + "%"; };
+
+/* Minuteur : 10 s par carte, jamais remis à zéro */
+function startTimer() { stopTimer(); if (view !== "game") return; deadline = Date.now() + TEMPS * 1000; tId = setInterval(tick, 100); tick(); }
+function stopTimer() { if (tId) { clearInterval(tId); tId = null; } }
+function tick() {
+  const left = Math.max(0, (deadline - Date.now()) / 1000);
+  $("tbar").style.width = (left / TEMPS * 100) + "%";
+  $("tbar").classList.toggle("low", left <= 3);
+  $("tsec").textContent = Math.ceil(left) + "s";
+  if (left <= 0) { stopTimer(); fails++; reveal("⏱ Temps écoulé ! C'était " + cur.name + " (−1 vie)", "#dc3545", false); hud(); }
+}
+
+function footSVG(life) {
+  const toes = [[30,42,13,17],[49,36,8.5,12],[63,38,7.5,11],[75,43,6.5,10],[84,52,5.5,8]];
+  const body = "M24,66 C18,92 34,102 34,126 C34,154 78,156 78,126 C78,102 88,90 86,68 C84,52 36,48 24,66 Z";
+  return '<svg width="42" viewBox="0 0 100 160" aria-label="vies">' +
+    toes.map((t, i) => '<g class="toe' + (i >= life ? " down" : "") + '"><ellipse class="t" cx="' + t[0] + '" cy="' + t[1] + '" rx="' + t[2] + '" ry="' + t[3] + '"/><ellipse class="n" cx="' + t[0] + '" cy="' + (t[1] - t[3] * 0.45) + '" rx="' + (t[2] * 0.55) + '" ry="' + (t[3] * 0.38) + '"/></g>').join("") +
+    '<path d="' + body + '" fill="#f1c5a0" stroke="#c98f66" stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<path d="M36,126 C36,142 60,146 70,134" fill="none" stroke="#dba983" stroke-width="2" stroke-linecap="round"/></svg>';
+}
+function hud() {
+  $("hud-round").textContent = "Manche " + round;
+  $("hud-life").innerHTML = footSVG(MAX_LIFE - fails);
+  $("hud-score").textContent = "💰 " + bget(player).pts + " pts";
+}
+
+function answer(btn, name) {
+  const left = Math.max(1, Math.ceil((deadline - Date.now()) / 1000));
+  if (name === cur.name) {
+    btn.classList.add("correct");
+    if (phase === 0) {   // 1er essai : la carte, aucun point (sauf doublon)
+      const n = addCard(player, cur.id); let txt = "Bravo ! ";
+      if (n > 1) {
+        const p = DOUBLON_PTS[cur.r];
+        addPts(player, p); gain += p; txt += "Doublon" + (cur.r === "common" ? "" : " " + RLAB[cur.r].toLowerCase()) + " : +" + pts(p);
+      } else { newCount++; txt += cur.r === "legendary" ? "Carte légendaire obtenue !" : cur.r === "rare" ? "Carte rare obtenue !" : "Nouvelle carte !"; }
+      reveal(txt, "#28a745", true); rainCards([cur]);
+    } else {             // 2e essai : points = secondes restantes, pas de carte
+      addPts(player, left); gain += left;
+      reveal("2e essai : +" + pts(left) + " (pas de carte)", "#e69500", false);
+    }
+  } else if (phase === 0) {
+    phase = 1; btn.disabled = true; btn.classList.add("wrong");
+    curtain(REVEALS[1]);     // le rideau monte, le minuteur continue
+    $("msg").style.color = "#dc3545";
+    $("msg").textContent = "tu n'es pas un vrai kiffeur ❌ (plus de carte, mais des points possibles)";
+  } else {
+    fails++; btn.classList.add("wrong");
+    reveal("Raté ! C'était " + cur.name + " (−1 vie)", "#dc3545", false);
+  }
+  hud();
+}
+
+function reveal(text, color, won) {
+  stopTimer(); curtain(1); revealed = true;
+  document.querySelectorAll("#options .btn").forEach(b => { b.disabled = true; b.classList.toggle("correct", b.textContent === cur.name); });
+  $("msg").style.color = color; $("msg").textContent = text;
+  if (won) $("won").innerHTML = '<div class="won">' + cardHTML(cur, true, bget(player).cards[cur.id]) + '</div>';
+  $("next").textContent = isOver() ? "Voir le résultat" : "Photo suivante";
+  $("next").classList.remove("hidden");
+}
+function nextRound() { if (isOver()) return endGame(); nextCard(); }
+
+function endGame() {
+  const done = bget(player).done;
+  active = false; clearSave();
+  $("end-text").textContent = player + " : " + newCount + " nouvelle" + (newCount > 1 ? "s" : "") + " carte" + (newCount > 1 ? "s" : "") + " · +" + pts(gain) + " (conservés)" + (fails >= MAX_LIFE ? " · plus de vie !" : "");
+  $("diplome-zone").innerHTML = done ? diplomeHTML(player) : "";
+  renderRank("rank-end"); show("end");
+  if (done) rain("🏅", 40);
+}
+
+/* =====================================================================
+   CARTES, CLASSEUR, VITRINE
+   ===================================================================== */
+function cardHTML(c, has, count, click) {
+  const no = "N° " + String(c.n).padStart(3, "0");
+  if (!has) return '<div class="tcg locked"><div class="nm">???</div><div class="q">?</div><div class="no">' + no + '</div></div>';
+  return '<div class="tcg' + (c.r === "legendary" ? " leg" : c.r === "rare" ? " rare" : "") + '"' + (click ? ' data-id="' + esc(c.id) + '"' : "") + '><div class="nm">' + sym(c) + esc(c.name) + '</div>' +
+    (count > 1 ? '<span class="x">x' + count + '</span>' : '') +
+    '<img src="' + esc(c.img) + '" alt="" onerror="this.onerror=null;this.src=PLACEHOLDER"><div class="no">' + no + ' · ' + RLAB[c.r] + '</div></div>';
+}
+function diplomeHTML(n) {
+  const inner = DIPLOME_IMG ? '<img src="' + esc(DIPLOME_IMG) + '" alt="Diplôme de kiffeur"><p><b>' + esc(n) + '</b></p>'
+    : '<div style="font-size:40px">🦶🏅</div><h2 style="color:#333">Diplôme de kiffeur</h2><p>décerné à <b>' + esc(n) + '</b><br>pour sa collection complète !</p>';
+  return '<div class="diplome">' + inner + '</div>';
+}
+
+/* Effet d'inclinaison selon la position de la souris (ou du doigt) */
+function tilt(el) {
+  el.classList.add("tilt");
+  el.addEventListener("pointermove", e => {
+    const r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transform = "perspective(700px) rotateX(" + (-y * 22).toFixed(1) + "deg) rotateY(" + (x * 22).toFixed(1) + "deg) scale(1.04)";
+    el.style.setProperty("--gx", ((x + 0.5) * 100) + "%"); el.style.setProperty("--gy", ((y + 0.5) * 100) + "%");
+  });
+  el.addEventListener("pointerleave", () => { el.style.transform = ""; });
+}
+
+/* Carte agrandie + bouton vitrine */
+let modalId = null, modalOwner = null;
+function openCard(id, owner) {
+  const c = cardById(id); if (!c) return;
+  modalId = id; modalOwner = owner;
+  $("modal-card").innerHTML = cardHTML(c, true, bget(owner).cards[id]);
+  tilt($("modal-card").firstChild);
+  $("modal").classList.remove("hidden"); renderModalAct();
+}
+function renderModalAct() {
+  if (modalOwner !== me) { $("modal-info").textContent = "Carte de " + modalOwner; $("modal-act").innerHTML = ""; return; }
+  const b = bget(me), inV = b.vit.includes(modalId), full = b.vit.length >= VITRINE_MAX;
+  $("modal-info").textContent = "Vitrine : " + b.vit.length + "/" + VITRINE_MAX;
+  $("modal-act").innerHTML = '<button class="btn primary" onclick="toggleVitrine()" ' + (!inV && full ? "disabled" : "") + '>' + (inV ? "✖ Retirer de ma vitrine" : (full ? "Vitrine pleine" : "⭐ Ajouter à ma vitrine")) + '</button>';
+}
+function toggleVitrine() {
+  const b = bget(me), i = b.vit.indexOf(modalId);
+  if (i >= 0) b.vit.splice(i, 1); else if (b.vit.length < VITRINE_MAX) b.vit.push(modalId);
+  bset(me, b); renderModalAct();
+  if (view === "vitrine") renderVitrine();
+}
+function closeCard() { $("modal").classList.add("hidden"); }
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeCard(); });
+
+function playerNames() {
+  const names = [...new Set([...Object.keys(users()), ...Object.keys(binders())])];
+  if (me && !names.includes(me)) names.unshift(me);
+  return names;
+}
+function fillSelect(sel, who) {
+  $(sel).innerHTML = playerNames().map(n => '<option>' + esc(n) + '</option>').join("");
+  $(sel).value = who || me;
+}
+
+/* Classeur */
+function openBinder(who) { fillSelect("who", who); show("binder"); renderBinder(); }
+function renderBinder() {
+  const n = $("who").value, o = bget(n).cards, got = CARDS.filter(c => o[c.id]);
+  $("progress").textContent = got.length + " / " + CARDS.length + " cartes · ◆ " + got.filter(c => c.r === "rare").length + "/" + CARDS.filter(c => c.r === "rare").length + " · ★ " + got.filter(c => c.leg).length + "/" + LEGS.length + (DEMO ? " (démo)" : "");
+  $("grid").innerHTML = CARDS.map(c => cardHTML(c, !!o[c.id], o[c.id], true)).join("");
+  $("binder-diplome").innerHTML = got.length === CARDS.length ? diplomeHTML(n) : "";
+  const ok = n === me || !!users()[n];
+  $("binder-act").innerHTML = ok ? '<button class="btn" data-p="' + (n === me ? "" : esc(n)) + '" onclick="openTrade(this.dataset.p)">🔄 ' + (n === me ? "Échanger des cartes" : "Échanger avec " + esc(n)) + '</button>' : "";
+}
+$("grid").addEventListener("click", e => { const t = e.target.closest("[data-id]"); if (t) openCard(t.dataset.id, $("who").value); });
+
+/* Vitrine : 5 présentoirs */
+function openVitrine(who) { fillSelect("vwho", who); show("vitrine"); renderVitrine(); }
+function renderVitrine() {
+  const owner = $("vwho").value, b = bget(owner), ids = b.vit.filter(id => b.cards[id] && cardById(id));
+  let html = "";
+  for (let i = 0; i < VITRINE_MAX; i++) {
+    const c = ids[i] && cardById(ids[i]);
+    html += '<div class="stand">' + (c ? cardHTML(c, true, b.cards[c.id], true) : '<div class="slot">Emplacement vide</div>') + '<div class="base"></div></div>';
+  }
+  $("vit-grid").innerHTML = html;
+  $("vit-grid").querySelectorAll(".tcg").forEach(tilt);
+  $("vit-hint").textContent = owner === me ? "Ouvre une carte de ton classeur pour l'ajouter ici (" + ids.length + "/" + VITRINE_MAX + "). Touche une carte pour l'agrandir." : "Vitrine de " + owner;
+}
+$("vit-grid").addEventListener("click", e => { const t = e.target.closest("[data-id]"); if (t) openCard(t.dataset.id, $("vwho").value); });
+
+/* Pluie de pieds à chaque carte obtenue */
+function rainCards(list) {
+  const leg = list.some(c => c.leg);
+  rain("🦶", leg ? 80 : 40 * list.length); if (leg) rain("✨", 40);
+}
+function rain(e, n) {
+  for (let i = 0; i < n; i++) setTimeout(() => {
+    const f = document.createElement("div");
+    f.className = "fx"; f.textContent = e;
+    f.style.left = rnd(0, 100) + "vw"; f.style.animationDuration = rnd(2, 4) + "s"; f.style.fontSize = rnd(20, 40) + "px";
+    document.body.appendChild(f); setTimeout(() => f.remove(), 4200);
+  }, i * 60);
+}
+
+/* =====================================================================
+   BOUTIQUE, ÉCHANGES, CLASSEMENT, SUGGESTIONS
+   ===================================================================== */
+const CHANCES_TXT = RARITIES.map(r => CHANCES[r] + " % " + RLABP[r]).join(", ");
+const CHESTS = [
+  {id: "normal", ico: "📦", nom: "Coffre normal", cout: COUTS.normal, desc: "1 carte aléatoire (" + CHANCES_TXT + ")", open: () => [drawCard(CARDS)]},
+  {id: "legendaire", ico: "👑", nom: "Coffre légendaire", cout: COUTS.legendaire, desc: "1 carte légendaire aléatoire", needLeg: true, open: () => [LEGS[Math.floor(Math.random() * LEGS.length)]]},
+  {id: "chanceux", ico: "🍀", nom: "Coffre chanceux", cout: COUTS.chanceux, desc: "1 carte, et 1 chance sur " + Math.round(1 / CHANCEUX_DOUBLE) + " d'en avoir 2 !", open: () => { const r = [drawCard(CARDS)]; if (Math.random() < CHANCEUX_DOUBLE) r.push(drawCard(CARDS)); return r; }}
+];
+function openShop() { $("shop-res").innerHTML = ""; show("shop"); renderShop(); }
+function renderShop() {
+  const b = bget(me);
+  $("shop-bal").innerHTML = avatarHTML(me) + esc(me) + " · 💰 " + b.pts + " pts";
+  $("chests").innerHTML = CHESTS.map(ch => '<div class="chest"><div class="ico">' + ch.ico + '</div><div><b>' + ch.nom + '</b><div class="muted">' + ch.desc + '</div></div>' +
+    '<button class="btn" ' + ((b.pts < ch.cout || (ch.needLeg && !LEGS.length)) ? "disabled" : "") + ' onclick="buy(\'' + ch.id + '\')">' + ch.cout + ' pts</button></div>').join("");
+}
+function buy(id) {
+  const ch = CHESTS.find(c => c.id === id), b = bget(me);
+  if (b.pts < ch.cout) return;
+  b.pts -= ch.cout; bset(me, b);
+  const got = ch.open(); got.forEach(c => addCard(me, c.id));
+  const o = bget(me).cards;
+  $("shop-res").innerHTML = '<h2>' + ch.ico + ' Tu as obtenu :</h2><div class="grid">' + got.map(c => cardHTML(c, true, o[c.id])).join("") + '</div>';
+  rainCards(got); renderShop();
+}
+
+/* Échanges : le partenaire confirme avec son mot de passe */
+let tp = "";
+function opts(cards) { return CARDS.filter(c => cards[c.id]).map(c => '<option value="' + esc(c.id) + '">' + sym(c) + esc(c.name) + " ×" + cards[c.id] + '</option>').join(""); }
+function openTrade(partner) { if (partner) tp = partner; show("trade"); renderTrade(); }
+function renderTrade() {
+  const b = bget(me), others = Object.keys(users()).filter(n => n !== me);
+  $("trade-me").innerHTML = avatarHTML(me) + esc(me) + " · 💰 " + b.pts + " pts";
+  if (!others.length) { $("trade-body").innerHTML = '<p class="muted">Aucun autre joueur n\'a de compte sur cet appareil.</p>'; return; }
+  if (!others.includes(tp)) tp = others[0];
+  const pb = bget(tp);
+  $("trade-body").innerHTML = '<p>Échanger avec :</p><select onchange="tp=this.value;renderTrade()">' + others.map(n => '<option' + (n === tp ? " selected" : "") + '>' + esc(n) + '</option>').join("") + '</select>' +
+    '<p>Tu donnes :</p><select id="give">' + opts(b.cards) + '</select>' +
+    '<p>Tu reçois de ' + esc(tp) + ' :</p><select id="take">' + opts(pb.cards) + '</select>' +
+    '<p>Mot de passe de ' + esc(tp) + ' (son accord) :</p><input type="password" id="t-pw" placeholder="Mot de passe de ' + esc(tp) + '">' +
+    '<button class="btn primary" onclick="doTrade()" ' + (b.pts < TRADE_COST ? "disabled" : "") + '>Échanger (' + TRADE_COST + ' pts)</button><div id="trade-msg" style="margin-top:10px;font-weight:bold"></div>' +
+    (b.pts < TRADE_COST ? '<p class="muted">Il te faut ' + TRADE_COST + ' points pour échanger.</p>' : "");
+}
+function doTrade() {
+  const g = $("give").value, t = $("take").value, msg = $("trade-msg"); msg.style.color = "#dc3545";
+  const a = bget(me), p = bget(tp);
+  if (!g || !t || !a.cards[g] || !p.cards[t]) { msg.textContent = "Choisis une carte de chaque côté."; return; }
+  if (users()[tp].pw !== hash($("t-pw").value, tp)) { msg.textContent = "Mot de passe de " + tp + " incorrect."; return; }
+  if (a.pts < TRADE_COST) { msg.textContent = "Pas assez de points."; return; }
+  a.pts -= TRADE_COST;
+  a.cards[g]--; if (!a.cards[g]) delete a.cards[g];
+  p.cards[t]--; if (!p.cards[t]) delete p.cards[t];
+  a.cards[t] = (a.cards[t] || 0) + 1; p.cards[g] = (p.cards[g] || 0) + 1;
+  a.vit = a.vit.filter(id => a.cards[id]); p.vit = p.vit.filter(id => p.cards[id]);
+  bset(me, a); bset(tp, p);
+  renderTrade();
+  $("trade-msg").style.color = "#28a745";
+  $("trade-msg").textContent = "Échange réussi : " + cardById(g).name + " ⇄ " + cardById(t).name;
+  rainCards([cardById(t)]);
+}
+
+function renderRank(id) {
+  const rows = Object.entries(binders()).map(([n, x]) => {
+    const got = CARDS.filter(c => (x.cards || {})[c.id]);
+    return {n, u: got.length, l: got.filter(c => c.leg).length, done: x.done};
+  }).filter(r => r.u > 0).sort((a, b) => b.u - a.u || b.l - a.l).slice(0, NB_CLASSEMENT);
+  $(id).innerHTML = rows.length ? "<table>" + rows.map((r, i) => "<tr><td>" + (i + 1) + "</td><td>" + avatarHTML(r.n) + esc(r.n) + (r.done ? " 🏅" : "") + "</td><td>" + r.u + "/" + CARDS.length + " · ★" + r.l + "</td></tr>").join("") + "</table>"
+    : "<p class='muted'>Personne n'a encore de carte.</p>";
+}
+function openRank() { renderRank("rank-full"); show("rank"); }
+
+/* Suggestions : photo + nom, enregistrées dans le navigateur, téléchargeables pour l'admin */
+let sImg = null;
+function openSuggest() { sImg = null; $("s-file").value = ""; $("s-name").value = ""; $("s-prev").classList.add("hidden"); $("s-msg").textContent = ""; show("suggest"); renderSuggestions(); }
+$("s-file").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 640 / Math.max(im.width, im.height)), c = document.createElement("canvas");
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      sImg = c.toDataURL("image/jpeg", 0.75); $("s-prev").src = sImg; $("s-prev").classList.remove("hidden");
+    };
+    im.src = r.result;
+  };
+  r.readAsDataURL(f);
+});
+function sendSuggestion() {
+  const name = $("s-name").value.trim(), msg = $("s-msg");
+  if (!sImg || !name) { msg.style.color = "#dc3545"; msg.textContent = "Ajoute une photo et le nom de la personne."; return; }
+  const list = load(K_SUGG, []); list.push({by: me, name, img: sImg, t: Date.now()}); save(K_SUGG, list);
+  msg.style.color = "#28a745"; msg.textContent = "Merci ! Suggestion enregistrée. Télécharge-la ci-dessous pour la transmettre à l'admin.";
+  sImg = null; $("s-file").value = ""; $("s-name").value = ""; $("s-prev").classList.add("hidden"); renderSuggestions();
+}
+function renderSuggestions() {
+  const mine = load(K_SUGG, []).map((s, i) => ({...s, i})).filter(s => s.by === me);
+  $("s-list").innerHTML = mine.length ? "<h2>Tes suggestions</h2>" + mine.map(s => '<div class="sug"><img src="' + s.img + '" alt=""><span>' + esc(s.name) + '</span><button title="Télécharger" onclick="dlSuggestion(' + s.i + ')">💾</button><button title="Supprimer" onclick="delSuggestion(' + s.i + ')">🗑️</button></div>').join("") : "";
+}
+function dlSuggestion(i) {
+  const s = load(K_SUGG, [])[i]; if (!s) return;
+  const a = document.createElement("a"); a.href = s.img; a.download = s.name.replace(/[\\/:*?"<>|]/g, "") + ".jpg";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function delSuggestion(i) { const l = load(K_SUGG, []); l.splice(i, 1); save(K_SUGG, l); renderSuggestions(); }
+
+/* Outil d'import (ouvrir podoquizz.html#admin) : lit les noms de fichiers d'un dossier et prépare la liste */
+let adminFiles = [];
+$("a-files").addEventListener("change", () => {
+  adminFiles = [...$("a-files").files].map(f => f.name).filter(n => /\.(jpe?g|png|webp|gif|avif)$/i.test(n)).sort((a, b) => a.localeCompare(b));
+  renderAdmin();
+});
+function renderAdmin() {
+  const cnt = {common: 0, rare: 0, legendary: 0}, seen = {}, warns = [], imgur = $("a-imgur").checked;
+  adminFiles.forEach(fn => {
+    const p = parseFile(fn); cnt[p.r]++; seen[p.name] = (seen[p.name] || 0) + 1;
+    if (!p.tagged) warns.push("⚠ « " + esc(fn) + " » : pas de rareté reconnue, sera Commune");
+  });
+  Object.keys(seen).filter(n => seen[n] > 1).forEach(n => warns.push("⚠ Nom en double : " + esc(n)));
+  $("a-sum").textContent = adminFiles.length ? adminFiles.length + " photos : " + RARITIES.map(r => cnt[r] + " " + RLABP[r]).join(" · ") : "";
+  $("a-warn").innerHTML = warns.slice(0, 30).join("<br>") + (warns.length > 30 ? "<br>… et " + (warns.length - 30) + " autres" : "");
+  $("a-out").value = adminFiles.map(fn => imgur ? "  [" + JSON.stringify(fn) + ', ""],' : "  " + JSON.stringify(fn) + ",").join("\n");
+}
+function copyList() {
+  const t = $("a-out").value; if (!t) return;
+  if (navigator.clipboard) navigator.clipboard.writeText(t).catch(() => {}); else { $("a-out").select(); document.execCommand("copy"); }
+}
+
+/* ---------- Démarrage : session conservée = connexion unique ---------- */
+function startApp() {
+  const s = load(K_SESSION, null);
+  if (s && users()[s]) enter(s); else { renderNav(); show("login"); }
+  if (location.hash === "#admin") show("admin");
+}
+window.addEventListener("hashchange", () => { if (location.hash === "#admin") show("admin"); });
+loadCards().then(startApp);
+</script>
+</body>
+</html>
